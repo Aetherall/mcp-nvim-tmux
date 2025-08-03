@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "nvimrun": {
+      "command": "nix",
+      "args": ["run", "github:aetherall/mcp-nvim-tmux#mcpnvimtmux"],
+      "env": {}
+    }
+  }
+}
