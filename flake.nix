@@ -44,7 +44,7 @@
       # Bash script with runtime dependencies
       nvimrun = pkgs.writeScriptBin "nvimrun" ''
         #!${pkgs.bash}/bin/bash
-        export PATH="${pkgs.tmux}/bin:${pkgs.neovim}/bin:${pkgs.asciinema}/bin:$PATH"
+        export PATH="$PATH:${pkgs.tmux}/bin:${pkgs.neovim}/bin:${pkgs.asciinema}/bin"
         exec ${pkgs.bash}/bin/bash ${./nvimrun.sh} "$@"
       '';
     in {

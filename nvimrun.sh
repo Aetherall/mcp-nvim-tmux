@@ -45,7 +45,7 @@ nvimrun_start() {
     if $record; then
         local cast_file="$recordings_dir/${session}_$(date +%Y%m%d_%H%M%S).cast"
         tmux new-session -d -s "$session" -x "$width" -y "$height" \
-            "asciinema rec -q '$cast_file' -c 'nvim -u NONE'"
+            "asciinema rec --stdin -q '$cast_file' -c 'nvim -u NONE'"
         echo "Recording to: $cast_file"
     else
         tmux new-session -d -s "$session" -x "$width" -y "$height" "nvim -u NONE"
@@ -225,6 +225,95 @@ nvimrun_play() {
     asciinema play "$found"
 }
 
+# Display recording as plain text (for non-interactive AI/viewing)
+# Usage: nvimrun_cat <recording_file_or_session_pattern>
+nvimrun_cat() {
+    local pattern="$1"
+    local recordings_dir="$HOME/.nvimrun/recordings"
+    
+    if [ -z "$pattern" ]; then
+        echo "Usage: nvimrun cat <recording_file_or_pattern>" >&2
+        return 1
+    fi
+    
+    # Find the recording file
+    local file=""
+    if [ -f "$pattern" ]; then
+        file="$pattern"
+    else
+        file=$(find "$recordings_dir" -name "*${pattern}*" -type f 2>/dev/null | head -1)
+    fi
+    
+    if [ -z "$file" ] || [ ! -f "$file" ]; then
+        echo "No recording matching '$pattern' found." >&2
+        return 1
+    fi
+    
+    echo "=== Recording: $(basename "$file") ==="
+    
+    # Parse header
+    local header=$(head -1 "$file")
+    local width=$(echo "$header" | sed -n 's/.*"width": *\([0-9]*\).*/\1/p')
+    local height=$(echo "$header" | sed -n 's/.*"height": *\([0-9]*\).*/\1/p')
+    echo "Terminal size: ${width}x${height}"
+    echo ""
+    
+    # Check if we have jq for better JSON parsing
+    if command -v jq >/dev/null 2>&1; then
+        echo "=== Session Timeline ==="
+        echo ""
+        
+        # Parse events with jq
+        tail -n +2 "$file" | while IFS= read -r line; do
+            local timestamp=$(echo "$line" | jq -r '.[0]' 2>/dev/null)
+            local event_type=$(echo "$line" | jq -r '.[1]' 2>/dev/null)
+            local data=$(echo "$line" | jq -r '.[2]' 2>/dev/null)
+            
+            if [ -n "$timestamp" ] && [ "$timestamp" != "null" ]; then
+                printf "[%6.2fs] " "$(echo "$timestamp" | sed 's/,/./g')"
+                
+                case "$event_type" in
+                    "i")
+                        echo "INPUT: $data"
+                        ;;
+                    "o")
+                        # For output, show a preview (first 80 chars, single line)
+                        local preview=$(echo "$data" | sed 's/\\[nt]/  /g; s/\\u001b\[[0-9;]*[a-zA-Z]//g' | tr -d '\n' | cut -c1-80)
+                        if [ ${#preview} -eq 80 ]; then
+                            echo "OUTPUT: ${preview}..."
+                        else
+                            echo "OUTPUT: $preview"
+                        fi
+                        ;;
+                    "m")
+                        echo "MARKER: $data"
+                        ;;
+                    "r")
+                        echo "RESIZE: $data"
+                        ;;
+                esac
+            fi
+        done
+        
+        echo ""
+        echo "=== Final Screen State ==="
+        echo ""
+    fi
+    
+    # Always show the final rendered output using asciinema cat
+    if command -v script >/dev/null 2>&1; then
+        # Linux version
+        script -q -c "asciinema cat '$file'" /dev/null 2>/dev/null | sed 's/\r$//'
+    else
+        # Fallback to basic output
+        echo "Note: Install 'script' command for better output rendering"
+        echo ""
+        # Just show raw events as fallback
+        tail -n +2 "$file" | head -20
+        echo "... (truncated)"
+    fi
+}
+
 # Main function for CLI usage
 nvimrun() {
     local command="$1"
@@ -258,8 +347,11 @@ nvimrun() {
         play)
             nvimrun_play "$@"
             ;;
+        cat)
+            nvimrun_cat "$@"
+            ;;
         *)
-            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd|recordings|play} [args...]"
+            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd|recordings|play|cat} [args...]"
             echo ""
             echo "Commands:"
             echo "  start [session] [width] [height] [--record] - Start nvim in tmux session"
@@ -271,6 +363,7 @@ nvimrun() {
             echo "  cmd [session] 'command'                     - Execute vim command"
             echo "  recordings                                  - List available recordings"
             echo "  play <recording_or_pattern>                 - Play a recording"
+            echo "  cat <recording_or_pattern>                  - Display recording as text"
             return 1
             ;;
     esac
