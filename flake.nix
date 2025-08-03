@@ -41,9 +41,10 @@
         '';
       };
 
-      # Bash script
+      # Bash script with runtime dependencies
       nvimrun = pkgs.writeScriptBin "nvimrun" ''
         #!${pkgs.bash}/bin/bash
+        export PATH="${pkgs.tmux}/bin:${pkgs.neovim}/bin:${pkgs.asciinema}/bin:$PATH"
         exec ${pkgs.bash}/bin/bash ${./nvimrun.sh} "$@"
       '';
     in {
@@ -60,6 +61,7 @@
           tmux
           neovim
           bash
+          asciinema
         ];
 
         shellHook = ''
@@ -69,6 +71,11 @@
           echo "  npm install    - Install dependencies"
           echo "  npm start      - Start MCP server"
           echo "  ./nvimrun.sh   - Run nvimrun directly"
+          echo ""
+          echo "Recording support:"
+          echo "  Use --record flag with nvimrun start to record sessions"
+          echo "  nvimrun recordings - List recordings"
+          echo "  nvimrun play <name> - Play a recording"
           echo ""
         '';
       };

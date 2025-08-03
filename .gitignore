@@ -8,3 +8,7 @@ node_modules/
 # Nix build artifacts
 result
 result-*
+
+# Development
+.envrc
+.direnv/

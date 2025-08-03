@@ -7,11 +7,27 @@
 DEFAULT_SESSION="nvim_test"
 
 # Start a new nvim instance in a tmux session
-# Usage: nvimrun_start [session_name] [width] [height]
+# Usage: nvimrun_start [session_name] [width] [height] [--record]
 nvimrun_start() {
-    local session="${1:-$DEFAULT_SESSION}"
-    local width="${2:-80}"
-    local height="${3:-24}"
+    local session="$DEFAULT_SESSION"
+    local width="80"
+    local height="24"
+    local record=false
+    
+    # Parse arguments
+    local args=()
+    for arg in "$@"; do
+        if [ "$arg" = "--record" ]; then
+            record=true
+        else
+            args+=("$arg")
+        fi
+    done
+    
+    # Assign positional parameters
+    [ ${#args[@]} -ge 1 ] && session="${args[0]}"
+    [ ${#args[@]} -ge 2 ] && width="${args[1]}"
+    [ ${#args[@]} -ge 3 ] && height="${args[2]}"
     
     # Check if session already exists
     if tmux has-session -t "$session" 2>/dev/null; then
@@ -19,13 +35,30 @@ nvimrun_start() {
         return 1
     fi
     
-    # Create new detached tmux session with nvim (no config)
-    tmux new-session -d -s "$session" -x "$width" -y "$height" "nvim -u NONE"
+    # Create recordings directory if needed
+    local recordings_dir="$HOME/.nvimrun/recordings"
+    if $record; then
+        mkdir -p "$recordings_dir"
+    fi
+    
+    # Create new detached tmux session with nvim (optionally wrapped in asciinema)
+    if $record; then
+        local cast_file="$recordings_dir/${session}_$(date +%Y%m%d_%H%M%S).cast"
+        tmux new-session -d -s "$session" -x "$width" -y "$height" \
+            "asciinema rec -q '$cast_file' -c 'nvim -u NONE'"
+        echo "Recording to: $cast_file"
+    else
+        tmux new-session -d -s "$session" -x "$width" -y "$height" "nvim -u NONE"
+    fi
     
     # Wait a bit for nvim to start
     sleep 0.2
     
-    echo "Started nvim in session '$session' (${width}x${height})"
+    if $record; then
+        echo "Started nvim in session '$session' (${width}x${height}) [RECORDING]"
+    else
+        echo "Started nvim in session '$session' (${width}x${height})"
+    fi
 }
 
 # Stop and kill a nvim session
@@ -137,6 +170,61 @@ nvimrun_cmd() {
     nvimrun_keys "$session" Escape ":${cmd}" Enter
 }
 
+# List available recordings
+# Usage: nvimrun_recordings
+nvimrun_recordings() {
+    local recordings_dir="$HOME/.nvimrun/recordings"
+    
+    if [ ! -d "$recordings_dir" ]; then
+        echo "No recordings directory found."
+        return 0
+    fi
+    
+    local recordings=$(ls -1t "$recordings_dir"/*.cast 2>/dev/null)
+    
+    if [ -z "$recordings" ]; then
+        echo "No recordings found."
+        return 0
+    fi
+    
+    echo "Available recordings:"
+    echo "$recordings" | while read -r file; do
+        local basename=$(basename "$file")
+        local size=$(du -h "$file" | cut -f1)
+        local date=$(stat -c %y "$file" 2>/dev/null || stat -f %Sm "$file" 2>/dev/null)
+        echo "  $basename ($size) - $date"
+    done
+}
+
+# Play a recording
+# Usage: nvimrun_play <recording_file_or_session_pattern>
+nvimrun_play() {
+    local pattern="$1"
+    local recordings_dir="$HOME/.nvimrun/recordings"
+    
+    if [ -z "$pattern" ]; then
+        echo "Usage: nvimrun play <recording_file_or_pattern>" >&2
+        return 1
+    fi
+    
+    # If it's a full path and exists, play it
+    if [ -f "$pattern" ]; then
+        asciinema play "$pattern"
+        return $?
+    fi
+    
+    # Otherwise, look for it in recordings directory
+    local found=$(find "$recordings_dir" -name "*${pattern}*" -type f 2>/dev/null | head -1)
+    
+    if [ -z "$found" ]; then
+        echo "No recording matching '$pattern' found." >&2
+        return 1
+    fi
+    
+    echo "Playing: $found"
+    asciinema play "$found"
+}
+
 # Main function for CLI usage
 nvimrun() {
     local command="$1"
@@ -164,17 +252,25 @@ nvimrun() {
         cmd)
             nvimrun_cmd "$@"
             ;;
+        recordings)
+            nvimrun_recordings
+            ;;
+        play)
+            nvimrun_play "$@"
+            ;;
         *)
-            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd} [args...]"
+            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd|recordings|play} [args...]"
             echo ""
             echo "Commands:"
-            echo "  start [session] [width] [height]  - Start nvim in tmux session"
-            echo "  stop [session]                    - Stop nvim session"
-            echo "  keys [session] key1 key2...       - Send keys to nvim"
-            echo "  lua [session] 'code'              - Execute lua code"
-            echo "  screen [session] [--color]        - Capture current screen (with ANSI colors)"
-            echo "  wait [session] 'pattern' [timeout] - Wait for pattern on screen"
-            echo "  cmd [session] 'command'           - Execute vim command"
+            echo "  start [session] [width] [height] [--record] - Start nvim in tmux session"
+            echo "  stop [session]                              - Stop nvim session"
+            echo "  keys [session] key1 key2...                 - Send keys to nvim"
+            echo "  lua [session] 'code'                        - Execute lua code"
+            echo "  screen [session] [--color]                  - Capture current screen (with ANSI colors)"
+            echo "  wait [session] 'pattern' [timeout]          - Wait for pattern on screen"
+            echo "  cmd [session] 'command'                     - Execute vim command"
+            echo "  recordings                                  - List available recordings"
+            echo "  play <recording_or_pattern>                 - Play a recording"
             return 1
             ;;
     esac

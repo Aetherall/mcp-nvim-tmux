@@ -60,6 +60,10 @@ class NvimRunServer {
 								type: "number",
 								description: "Terminal height (default: 24)",
 							},
+							record: {
+								type: "boolean",
+								description: "Record session with asciinema (default: false)",
+							},
 						},
 					},
 				},
@@ -242,19 +246,20 @@ class NvimRunServer {
 		return stdout;
 	}
 
-	async start({ session, width = 80, height = 24 }) {
+	async start({ session, width = 80, height = 24, record = false }) {
 		const sessionName = session || `nvim_mcp_${randomBytes(4).toString("hex")}`;
 
+		const recordFlag = record ? "--record" : "";
 		await this.runCommand(
-			`${NVIMRUN_PATH} start ${sessionName} ${width} ${height}`,
+			`${NVIMRUN_PATH} start ${sessionName} ${width} ${height} ${recordFlag}`,
 		);
-		sessions.set(sessionName, { width, height, startTime: new Date() });
+		sessions.set(sessionName, { width, height, startTime: new Date(), recording: record });
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Started Neovim session: ${sessionName} (${width}x${height})`,
+					text: `Started Neovim session: ${sessionName} (${width}x${height})${record ? " [RECORDING]" : ""}`,
 				},
 			],
 		};
