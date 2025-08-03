@@ -30,12 +30,14 @@
           runHook preInstall
 
           mkdir -p $out/lib/mcpnvimtmux
-          cp -r node_modules package.json package-lock.json index.js $out/lib/mcpnvimtmux/
+          cp -r node_modules package.json package-lock.json index.js nvimrun.sh $out/lib/mcpnvimtmux/
+          chmod +x $out/lib/mcpnvimtmux/nvimrun.sh
 
           # Create wrapper script
           mkdir -p $out/bin
           makeWrapper ${pkgs.nodejs_20}/bin/node $out/bin/mcpnvimtmux \
-            --add-flags "$out/lib/mcpnvimtmux/index.js"
+            --add-flags "$out/lib/mcpnvimtmux/index.js" \
+            --set PATH "${pkgs.tmux}/bin:${pkgs.neovim}/bin:${pkgs.asciinema}/bin:${pkgs.jq}/bin:${pkgs.coreutils}/bin:${pkgs.findutils}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin"
 
           runHook postInstall
         '';
