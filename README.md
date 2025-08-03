@@ -1,5 +1,7 @@
 # @aetherall/mcp-nvim-tmux
 
+## WARNING: THIS WAS VIBECODED WITH A SINGLE PROMPT, DO NOT EXPECT MAINTENANCE OR SUPPORT, DOCUMENTATION AND FEATURES MAY BE HALLUCINATED
+
 An MCP (Model Context Protocol) server that enables AI agents to control Neovim instances running in tmux sessions. Includes a standalone bash script for direct usage.
 
 ## Quick Start with Claude
@@ -21,7 +23,7 @@ Example: "Start a neovim session and create a Python hello world script"
 
 ## Installation
 
-### Using Nix Flakes (Recommended)
+### Using Nix Flakes
 ```bash
 # Run directly
 nix run github:aetherall/mcp-nvim-tmux#nvimrun -- start mysession
@@ -33,11 +35,6 @@ nix profile install github:aetherall/mcp-nvim-tmux#mcpnvimtmux
 
 # Development shell
 nix develop github:aetherall/mcp-nvim-tmux
-```
-
-### As an MCP Server
-```bash
-npm install -g @aetherall/mcp-nvim-tmux
 ```
 
 ### For Direct Usage
@@ -94,7 +91,6 @@ EOF
 ```bash
 ./nvimrun.sh wait my_session "Pattern to find" 5  # 5 second timeout
 ```
-
 
 ## Tips
 
