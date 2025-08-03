@@ -270,7 +270,7 @@ nvimrun_cat() {
             local data=$(echo "$line" | jq -r '.[2]' 2>/dev/null)
             
             if [ -n "$timestamp" ] && [ "$timestamp" != "null" ]; then
-                printf "[%6.2fs] " "$(echo "$timestamp" | sed 's/,/./g')"
+                LC_NUMERIC=C printf "[%6.2fs] " "$timestamp"
                 
                 case "$event_type" in
                     "i")
