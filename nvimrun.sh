@@ -225,6 +225,81 @@ nvimrun_play() {
     asciinema play "$found"
 }
 
+# Analyze recording with AI model
+# Usage: nvimrun_analyze <recording_file_or_session_pattern> [summarize]
+nvimrun_analyze() {
+    local pattern="$1"
+    local summarize="${2:-false}"
+    local recordings_dir="$HOME/.nvimrun/recordings"
+    
+    if [ -z "$pattern" ]; then
+        echo "Usage: nvimrun analyze <recording_file_or_pattern> [summarize]" >&2
+        return 1
+    fi
+    
+    # Get the AI command from environment or use default
+    local ai_cmd="${MCP_NVIM_TMUX_CMD:-ollama run qwen3:8b}"
+    
+    # Get the recording output
+    local recording_output=$(nvimrun_cat "$pattern" 2>/dev/null)
+    if [ $? -ne 0 ] || [ -z "$recording_output" ]; then
+        echo "Failed to get recording data" >&2
+        return 1
+    fi
+    
+    # Read the analysis prompt
+    local prompt_file="${NVIMRUN_PROMPTS_DIR:-$(dirname "$0")/prompts}/analyze_recording.txt"
+    if [ ! -f "$prompt_file" ]; then
+        # Use inline prompt if file doesn't exist
+        local prompt="You are analyzing a Neovim terminal recording. Provide a step-by-step breakdown of the user's actions.
+
+The recording format shows:
+- Timeline events with timestamps [X.XXs]
+- INPUT: user keystrokes and commands
+- OUTPUT: terminal responses and screen updates
+- Final screen state showing the result
+
+Analyze what happened by explaining:
+1. Initial state when Neovim started
+2. Each user input and its purpose
+3. Any mode changes (Normal/Insert/Visual/Command)
+4. Errors or unexpected behavior
+5. Whether the user achieved their goal
+
+Focus on Vim-specific details like:
+- Mode transitions (i for insert, Esc for normal, : for command)
+- Commands executed (like :w, :q, etc.)
+- Text entered or edited
+- File operations
+
+Be concise but thorough. Explain what the user was trying to do and what actually happened.
+
+RECORDING DATA:"
+    else
+        local prompt=$(cat "$prompt_file")
+    fi
+    
+    # Combine prompt with recording data
+    local full_prompt="${prompt}
+${recording_output}"
+    
+    # Run the analysis
+    if [ "$summarize" = "summarize" ]; then
+        # Two-step process: analyze then summarize
+        local analysis=$(eval "$ai_cmd" <<< "$full_prompt" 2>/dev/null)
+        if [ $? -ne 0 ]; then
+            echo "Analysis failed" >&2
+            return 1
+        fi
+        
+        local summary_prompt="Summarize this Neovim session analysis in 3-5 sentences: $analysis"
+        eval "$ai_cmd" <<< "$summary_prompt" 2>/dev/null
+    else
+        # Just run the analysis
+        eval "$ai_cmd" <<< "$full_prompt" 2>/dev/null
+    fi
+}
+
 # Display recording as plain text (for non-interactive AI/viewing)
 # Usage: nvimrun_cat <recording_file_or_session_pattern>
 nvimrun_cat() {
@@ -350,8 +425,11 @@ nvimrun() {
         cat)
             nvimrun_cat "$@"
             ;;
+        analyze)
+            nvimrun_analyze "$@"
+            ;;
         *)
-            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd|recordings|play|cat} [args...]"
+            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd|recordings|play|cat|analyze} [args...]"
             echo ""
             echo "Commands:"
             echo "  start [session] [width] [height] [--record] - Start nvim in tmux session"
@@ -364,6 +442,7 @@ nvimrun() {
             echo "  recordings                                  - List available recordings"
             echo "  play <recording_or_pattern>                 - Play a recording"
             echo "  cat <recording_or_pattern>                  - Display recording as text"
+            echo "  analyze <recording_or_pattern> [summarize]  - Analyze recording with AI"
             return 1
             ;;
     esac

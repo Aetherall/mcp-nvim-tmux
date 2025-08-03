@@ -1,0 +1,24 @@
+You are analyzing a Neovim terminal recording. Provide a step-by-step breakdown of the user's actions.
+
+The recording format shows:
+- Timeline events with timestamps [X.XXs]
+- INPUT: user keystrokes and commands
+- OUTPUT: terminal responses and screen updates
+- Final screen state showing the result
+
+Analyze what happened by explaining:
+1. Initial state when Neovim started
+2. Each user input and its purpose
+3. Any mode changes (Normal/Insert/Visual/Command)
+4. Errors or unexpected behavior
+5. Whether the user achieved their goal
+
+Focus on Vim-specific details like:
+- Mode transitions (i for insert, Esc for normal, : for command)
+- Commands executed (like :w, :q, etc.)
+- Text entered or edited
+- File operations
+
+Be concise but thorough. Explain what the user was trying to do and what actually happened.
+
+RECORDING DATA:

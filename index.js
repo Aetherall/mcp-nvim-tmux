@@ -229,6 +229,25 @@ class NvimRunServer {
 						required: ["pattern"],
 					},
 				},
+				{
+					name: "nvim_analyze",
+					description: "Analyze a Neovim recording using AI to explain what happened",
+					inputSchema: {
+						type: "object",
+						properties: {
+							pattern: { 
+								type: "string", 
+								description: "Recording file name or pattern to match" 
+							},
+							summarize: {
+								type: "boolean",
+								description: "If true, provide a brief summary instead of detailed analysis",
+								default: false
+							},
+						},
+						required: ["pattern"],
+					},
+				},
 			],
 		}));
 
@@ -264,6 +283,8 @@ class NvimRunServer {
 						return await this.play(args);
 					case "nvim_cat":
 						return await this.cat(args);
+					case "nvim_analyze":
+						return await this.analyze(args);
 					default:
 						throw new Error(`Unknown tool: ${name}`);
 				}
@@ -494,6 +515,20 @@ class NvimRunServer {
 
 	async cat({ pattern }) {
 		const output = await this.runCommand(`${NVIMRUN_PATH} cat "${pattern}"`);
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: output,
+				},
+			],
+		};
+	}
+
+	async analyze({ pattern, summarize = false }) {
+		const summarizeFlag = summarize ? "summarize" : "";
+		const output = await this.runCommand(`${NVIMRUN_PATH} analyze "${pattern}" ${summarizeFlag}`);
 
 		return {
 			content: [
