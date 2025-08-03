@@ -227,6 +227,18 @@ nvimrun_play() {
 
 # Analyze recording with AI model
 # Usage: nvimrun_analyze <recording_file_or_session_pattern> [summarize]
+# 
+# Environment variables:
+#   MCP_NVIM_TMUX_CMD - Command template (default: "ollama run $MODEL")
+#   MCP_NVIM_TMUX_MODEL - Default model for all operations
+#   MCP_NVIM_TMUX_ANALYZE_MODEL - Model for analysis step
+#   MCP_NVIM_TMUX_SUMMARIZE_MODEL - Model for summarization step
+#
+# Examples:
+#   nvimrun analyze session1
+#   nvimrun analyze session1 summarize
+#   MCP_NVIM_TMUX_ANALYZE_MODEL=qwen3:8b nvimrun analyze session1
+#   MCP_NVIM_TMUX_CMD='gemini --model $MODEL' nvimrun analyze session1
 nvimrun_analyze() {
     local pattern="$1"
     local summarize="${2:-false}"
@@ -237,8 +249,22 @@ nvimrun_analyze() {
         return 1
     fi
     
-    # Get the AI command from environment or use default
-    local ai_cmd="${MCP_NVIM_TMUX_CMD:-ollama run qwen3:8b}"
+    # Get the AI command template from environment or use default
+    local ai_cmd_template="${MCP_NVIM_TMUX_CMD:-ollama run \$MODEL}"
+    
+    # Get the appropriate model based on operation
+    local model
+    if [ "$summarize" = "summarize" ]; then
+        model="${MCP_NVIM_TMUX_SUMMARIZE_MODEL:-${MCP_NVIM_TMUX_MODEL:-qwen3:8b}}"
+    else
+        model="${MCP_NVIM_TMUX_ANALYZE_MODEL:-${MCP_NVIM_TMUX_MODEL:-qwen3:8b}}"
+    fi
+    
+    # Export MODEL for interpolation in the template
+    export MODEL="$model"
+    
+    # Interpolate the command with environment variables
+    local ai_cmd=$(eval "echo \"$ai_cmd_template\"")
     
     # Get the recording output
     local recording_output=$(nvimrun_cat "$pattern" 2>/dev/null)
@@ -286,14 +312,20 @@ ${recording_output}"
     # Run the analysis
     if [ "$summarize" = "summarize" ]; then
         # Two-step process: analyze then summarize
-        local analysis=$(eval "$ai_cmd" <<< "$full_prompt" 2>/dev/null)
+        # First run analysis with analyze model
+        MODEL="${MCP_NVIM_TMUX_ANALYZE_MODEL:-${MCP_NVIM_TMUX_MODEL:-qwen3:8b}}"
+        local analyze_cmd=$(eval "echo \"$ai_cmd_template\"")
+        local analysis=$(eval "$analyze_cmd" <<< "$full_prompt" 2>/dev/null)
         if [ $? -ne 0 ]; then
             echo "Analysis failed" >&2
             return 1
         fi
         
+        # Then summarize with summarize model
+        MODEL="${MCP_NVIM_TMUX_SUMMARIZE_MODEL:-${MCP_NVIM_TMUX_MODEL:-qwen3:8b}}"
+        local summarize_cmd=$(eval "echo \"$ai_cmd_template\"")
         local summary_prompt="Summarize this Neovim session analysis in 3-5 sentences: $analysis"
-        eval "$ai_cmd" <<< "$summary_prompt" 2>/dev/null
+        eval "$summarize_cmd" <<< "$summary_prompt" 2>/dev/null
     else
         # Just run the analysis
         eval "$ai_cmd" <<< "$full_prompt" 2>/dev/null
