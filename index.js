@@ -193,6 +193,42 @@ class NvimRunServer {
 						required: ["session", "text"],
 					},
 				},
+				{
+					name: "nvim_recordings",
+					description: "List available asciinema recordings",
+					inputSchema: {
+						type: "object",
+						properties: {},
+					},
+				},
+				{
+					name: "nvim_play",
+					description: "Play an asciinema recording",
+					inputSchema: {
+						type: "object",
+						properties: {
+							pattern: { 
+								type: "string", 
+								description: "Recording file name or pattern to match" 
+							},
+						},
+						required: ["pattern"],
+					},
+				},
+				{
+					name: "nvim_cat",
+					description: "Display asciinema recording in AI-readable format with input/output timeline",
+					inputSchema: {
+						type: "object",
+						properties: {
+							pattern: { 
+								type: "string", 
+								description: "Recording file name or pattern to match" 
+							},
+						},
+						required: ["pattern"],
+					},
+				},
 			],
 		}));
 
@@ -222,6 +258,12 @@ class NvimRunServer {
 						return await this.edit(args);
 					case "nvim_insert":
 						return await this.insert(args);
+					case "nvim_recordings":
+						return await this.recordings(args);
+					case "nvim_play":
+						return await this.play(args);
+					case "nvim_cat":
+						return await this.cat(args);
 					default:
 						throw new Error(`Unknown tool: ${name}`);
 				}
@@ -419,6 +461,45 @@ class NvimRunServer {
 				{
 					type: "text",
 					text: `Inserted text`,
+				},
+			],
+		};
+	}
+
+	async recordings() {
+		const output = await this.runCommand(`${NVIMRUN_PATH} recordings`);
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: output || "No recordings found.",
+				},
+			],
+		};
+	}
+
+	async play({ pattern }) {
+		const output = await this.runCommand(`${NVIMRUN_PATH} play "${pattern}"`);
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: `Playing recording: ${pattern}\n${output}`,
+				},
+			],
+		};
+	}
+
+	async cat({ pattern }) {
+		const output = await this.runCommand(`${NVIMRUN_PATH} cat "${pattern}"`);
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: output,
 				},
 			],
 		};
