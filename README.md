@@ -4,14 +4,6 @@
 
 An MCP (Model Context Protocol) server that enables AI agents to control Neovim instances running in tmux sessions. Includes a standalone bash script for direct usage.
 
-## Quick Start with Claude
-
-1. Copy `.mcp.json.example` to `.mcp.json` in any project
-2. Restart Claude Desktop
-3. Ask Claude to edit files with Neovim!
-
-Example: "Start a neovim session and create a Python hello world script"
-
 ## Features
 
 - Start/stop Neovim in detached tmux sessions
@@ -123,42 +115,22 @@ No installation needed! Use directly with `nix run`.
 
 ### Configuration for Claude Desktop
 
-#### Option 1: Using .mcp.json (Recommended for projects)
-Create a `.mcp.json` file in your project root:
+
 ```json
 {
   "mcpServers": {
-    "nvimrun": {
+    "nvim": {
       "command": "nix",
-      "args": ["run", "github:aetherall/mcp-nvim-tmux#mcpnvimtmux"]
+      "args": ["run", "github:aetherall/mcp-nvim-tmux"]
     }
   }
 }
 ```
 
-#### Option 2: Global Claude Desktop Configuration
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "nvimrun": {
-      "command": "nix",
-      "args": ["run", "github:aetherall/mcp-nvim-tmux#mcpnvimtmux"]
-    }
-  }
-}
-```
+#### For Claude Code (CLI)
 
-#### Option 3: Using Claude CLI (if available)
 ```bash
-claude mcp add nvimrun "nix run github:aetherall/mcp-nvim-tmux#mcpnvimtmux"
-```
-
-### Alternative: Local Installation
-If you prefer installing locally:
-```bash
-npm install
-# Then use: "command": "node", "args": ["/path/to/index.js"]
+claude mcp add nvim -- nix run github:aetherall/mcp-nvim-tmux
 ```
 
 ### Available MCP Tools

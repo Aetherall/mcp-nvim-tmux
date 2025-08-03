@@ -21,7 +21,7 @@
 
         src = ./.;
 
-        npmDepsHash = "sha256-hecpVQTRAGUyU0QU3ys/gmp7UyVWRZuSsCdWAnIyZ3c=";
+        npmDepsHash = "sha256-K1M5lkN1tZN6qHhv1dm8c1CpeGOxk268jwHL+xq1n+Q=";
 
         # Don't run npm build since this is a runtime script
         dontNpmBuild = true;

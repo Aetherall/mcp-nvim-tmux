@@ -4,3 +4,7 @@ node_modules/
 *.swp
 *.swo
 *~
+
+# Nix build artifacts
+result
+result-*
