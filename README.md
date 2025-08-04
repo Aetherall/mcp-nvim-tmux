@@ -122,6 +122,25 @@ EOF
 3. **Timing**: Some operations need time to complete. Add small delays with `sleep 0.1`
 4. **Clean Config**: nvimrun starts Neovim with `-u NONE` to avoid loading user configs
 
+## Monitoring Sessions
+
+When you start a session, you can watch it in real-time from another terminal:
+
+```bash
+# Start a session (this will show the attach command)
+./nvimrun.sh start my_session
+
+# In another terminal, attach in read-only mode to watch
+tmux attach -t my_session -r
+
+# To detach from watching: Press Ctrl+b, then d
+```
+
+Other useful tmux commands:
+- `tmux ls` - List all sessions
+- `tmux attach -t session_name` - Attach with control (careful - may interfere with automation)
+- `tmux kill-session -t session_name` - Force kill a stuck session
+
 ## Examples
 
 ### Create and edit a Python file

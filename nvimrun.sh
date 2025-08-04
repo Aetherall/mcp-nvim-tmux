@@ -59,6 +59,7 @@ nvimrun_start() {
     else
         echo "Started nvim in session '$session' (${width}x${height})"
     fi
+    echo "To watch in another terminal: tmux attach -t '$session' -r"
 }
 
 # Stop and kill a nvim session
