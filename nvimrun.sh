@@ -146,6 +146,35 @@ nvimrun_cmd() {
     nvimrun_keys "$session" Escape ":${cmd}" Enter
 }
 
+# Type literal text into nvim (no special key interpretation)
+# Usage: nvimrun_type [session_name] "text to type"
+#    or: echo "text" | nvimrun_type [session_name] -
+nvimrun_type() {
+    local session="${1:-$DEFAULT_SESSION}"
+    local text="${2}"
+    
+    # If second argument is "-", read from stdin
+    if [ "$text" = "-" ]; then
+        text=$(cat)
+    elif [ -z "$text" ]; then
+        # If no text argument, try reading from stdin if available
+        if [ ! -t 0 ]; then
+            text=$(cat)
+        else
+            echo "No text provided" >&2
+            return 1
+        fi
+    fi
+    
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+        echo "Session '$session' does not exist." >&2
+        return 1
+    fi
+    
+    # Use -l flag for literal text (no special key interpretation)
+    tmux send-keys -l -t "$session" "$text"
+}
+
 # List available recordings
 # Usage: nvimrun_recordings
 nvimrun_recordings() {
@@ -423,6 +452,9 @@ nvimrun() {
         cmd)
             nvimrun_cmd "$@"
             ;;
+        type)
+            nvimrun_type "$@"
+            ;;
         recordings)
             nvimrun_recordings
             ;;
@@ -436,13 +468,14 @@ nvimrun() {
             nvimrun_analyze "$@"
             ;;
         *)
-            echo "Usage: nvimrun {start|stop|keys|lua|screen|cmd|recordings|play|cat|analyze} [args...]"
+            echo "Usage: nvimrun {start|stop|keys|lua|type|screen|cmd|recordings|play|cat|analyze} [args...]"
             echo ""
             echo "Commands:"
             echo "  start [session] [width] [height] [--record] - Start nvim in tmux session"
             echo "  stop [session]                              - Stop nvim session"
             echo "  keys [session] key1 key2...                 - Send keys to nvim"
             echo "  lua [session] 'code'                        - Execute lua code"
+            echo "  type [session] 'text'                       - Type literal text (no key interpretation)"
             echo "  screen [session] [--color]                  - Capture current screen (with ANSI colors)"
             echo "  cmd [session] 'command'                     - Execute vim command"
             echo "  recordings                                  - List available recordings"

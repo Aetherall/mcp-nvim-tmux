@@ -178,6 +178,18 @@ class NvimRunServer {
 					},
 				},
 				{
+					name: "nvim_type",
+					description: "Type literal text without any special key interpretation",
+					inputSchema: {
+						type: "object",
+						properties: {
+							session: { type: "string", description: "Session name" },
+							text: { type: "string", description: "Text to type literally" },
+						},
+						required: ["session", "text"],
+					},
+				},
+				{
 					name: "nvim_recordings",
 					description: "List available asciinema recordings",
 					inputSchema: {
@@ -259,6 +271,8 @@ class NvimRunServer {
 						return await this.edit(args);
 					case "nvim_insert":
 						return await this.insert(args);
+					case "nvim_type":
+						return await this.type(args);
 					case "nvim_recordings":
 						return await this.recordings(args);
 					case "nvim_play":
@@ -451,6 +465,30 @@ class NvimRunServer {
 		);
 		
 		// Get screen content after inserting text
+		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: screen,
+				},
+			],
+		};
+	}
+
+	async type({ session, text }) {
+		// Use stdin to pass text, avoiding all shell escaping issues
+		const { stdout, stderr } = await execAsync(
+			`${NVIMRUN_PATH} type ${session} -`,
+			{ input: text }
+		);
+		
+		if (stderr && !stderr.includes("warning")) {
+			throw new Error(stderr);
+		}
+		
+		// Get screen content after typing text
 		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {
