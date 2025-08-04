@@ -80,7 +80,7 @@ class NvimRunServer {
 				},
 				{
 					name: "nvim_keys",
-					description: "Send keystrokes to Neovim",
+					description: "Send keystrokes to Neovim. Use for special keys and navigation. Examples: ['i'] to enter insert mode, ['Escape'] to exit, ['Enter'] for newline, ['Tab'] for tab, ['C-w', 'l'] for window navigation, ['d', 'd'] to delete line",
 					inputSchema: {
 						type: "object",
 						properties: {
@@ -88,7 +88,7 @@ class NvimRunServer {
 							keys: {
 								type: "array",
 								items: { type: "string" },
-								description: "Keys to send",
+								description: "Array of keys to send. Special keys: Enter, Tab, Escape, Space, BSpace, Delete, Up, Down, Left, Right, Home, End, PageUp, PageDown, C-x (Ctrl+x), M-x (Alt+x), F1-F12",
 							},
 						},
 						required: ["session", "keys"],
@@ -167,12 +167,12 @@ class NvimRunServer {
 				},
 				{
 					name: "nvim_type",
-					description: "Type literal text without any special key interpretation",
+					description: "Type literal text without any special key interpretation. Perfect for code, URLs, or text with special characters. All characters including $, !, quotes, etc. are typed exactly as provided. Example: 'echo $HOME' types literally without shell expansion",
 					inputSchema: {
 						type: "object",
 						properties: {
 							session: { type: "string", description: "Session name" },
-							text: { type: "string", description: "Text to type literally" },
+							text: { type: "string", description: "Text to type literally. Newlines create new lines, tabs create indentation. No escaping needed!" },
 						},
 						required: ["session", "text"],
 					},

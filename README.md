@@ -42,8 +42,14 @@ chmod +x nvimrun.sh
 # Start with recording
 ./nvimrun.sh start my_session 80 24 --record
 
-# Send keys
-./nvimrun.sh keys my_session i "Hello World" Escape
+# Send keys (for navigation and special keys)
+./nvimrun.sh keys my_session i              # Enter insert mode
+./nvimrun.sh keys my_session Escape         # Exit to normal mode
+./nvimrun.sh keys my_session dd             # Delete line
+./nvimrun.sh keys my_session C-w l          # Move to right window
+
+# Type literal text (no escaping needed!)
+./nvimrun.sh type my_session "Hello World! Special chars: $HOME != $(pwd)"
 
 # Execute vim command
 ./nvimrun.sh cmd my_session "w hello.txt"
@@ -111,16 +117,19 @@ EOF
 
 ## Tips
 
-1. **Escaping**: When using `nvimrun.sh lua`, be careful with quotes and special characters
-2. **Timing**: Some operations need time to complete. Use `sleep` or the `wait` command
-3. **Clean Config**: nvimrun starts Neovim with `-u NONE` to avoid loading user configs
+1. **Text Input**: Use `type` for literal text (no escaping needed) and `keys` for special keys
+2. **Special Keys**: Common keys include `Enter`, `Tab`, `Escape`, `C-w` (Ctrl+w), `Space`
+3. **Timing**: Some operations need time to complete. Add small delays with `sleep 0.1`
+4. **Clean Config**: nvimrun starts Neovim with `-u NONE` to avoid loading user configs
 
 ## Examples
 
 ### Create and edit a Python file
 ```bash
 ./nvimrun.sh start dev
-./nvimrun.sh keys dev i "def main():" Escape o "    print('Hello')" Escape
+./nvimrun.sh keys dev i  # Enter insert mode
+./nvimrun.sh type dev "def main():\n    print('Hello, World!')\n    return 0"
+./nvimrun.sh keys dev Escape  # Exit insert mode
 ./nvimrun.sh cmd dev "w main.py"
 ./nvimrun.sh stop dev
 ```
@@ -161,17 +170,30 @@ claude mcp add nvim -- nix run github:aetherall/mcp-nvim-tmux
 ### Available MCP Tools
 - `nvim_start` - Start a new Neovim session (with optional recording)
 - `nvim_stop` - Stop a Neovim session
-- `nvim_keys` - Send keystrokes
+- `nvim_keys` - Send keystrokes (for special keys like Enter, Tab, Escape, Ctrl sequences)
 - `nvim_cmd` - Execute Vim commands
 - `nvim_lua` - Execute simple Lua code
 - `nvim_lua_file` - Execute complex Lua code (multiline safe)
 - `nvim_screen` - Capture screen content
 - `nvim_edit` - Open file at specific line
-- `nvim_type` - Type literal text without special key interpretation
+- `nvim_type` - Type literal text without special key interpretation (perfect for code and special chars)
 - `nvim_recordings` - List available recordings
 - `nvim_play` - Play a recording
 - `nvim_cat` - Display recording in AI-readable format
 - `nvim_analyze` - Analyze recording with AI
+
+### Keys vs Type: When to Use Which
+
+**Use `nvim_keys` for:**
+- Navigation: `["h", "j", "k", "l"]`, `["g", "g"]`, `["G"]`
+- Mode changes: `["i"]`, `["Escape"]`, `["v"]`, `[":"]`
+- Special keys: `["Enter"]`, `["Tab"]`, `["C-w"]`, `["Space"]`
+- Vim commands: `["d", "d"]`, `["y", "y"]`, `["p"]`
+
+**Use `nvim_type` for:**
+- Code with special characters: `"const url = 'https://example.com?id=${}';"`
+- Shell commands: `"docker run -it --rm -v $(pwd):/app node"`
+- Any literal text: `"Hello! This has $pecial ch@rs & quotes \"like this\""`
 
 ## Environment Variables
 

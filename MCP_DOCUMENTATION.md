@@ -100,19 +100,74 @@ Stop a Neovim session.
 
 ### nvim_keys
 
-Send keystrokes to Neovim.
+Send keystrokes to Neovim. Use this for special keys, navigation, and vim commands.
 
 **Parameters:**
 - `session`: Target session name
 - `keys`: Array of keys to send
 
-**Example:**
+**Special Key Notation:**
+- `Enter` - Return/Enter key
+- `Tab` - Tab key
+- `Space` - Space key (useful between other keys)
+- `Escape` or `Esc` - Escape key
+- `BSpace` or `BS` - Backspace
+- `Delete` or `Del` - Delete key
+- `Up`, `Down`, `Left`, `Right` - Arrow keys
+- `Home`, `End` - Home/End keys
+- `PageUp`, `PageDown` - Page navigation
+- `C-x` - Ctrl+x (e.g., `C-w` for Ctrl+w)
+- `M-x` - Alt+x (e.g., `M-a` for Alt+a)
+- `F1` through `F12` - Function keys
+
+**Examples:**
+
+Basic text entry (not recommended - use nvim_type instead):
 ```javascript
 {
   "name": "nvim_keys",
   "arguments": {
     "session": "my_session",
-    "keys": ["i", "Hello World", "Escape"]
+    "keys": ["i", "Hello", "Space", "World", "Escape"]
+  }
+}
+```
+
+Navigation and editing:
+```javascript
+// Delete current line
+{
+  "name": "nvim_keys",
+  "arguments": {
+    "session": "my_session",
+    "keys": ["d", "d"]
+  }
+}
+
+// Navigate windows
+{
+  "name": "nvim_keys",
+  "arguments": {
+    "session": "my_session",
+    "keys": ["C-w", "l"]  // Move to right window
+  }
+}
+
+// Search
+{
+  "name": "nvim_keys",
+  "arguments": {
+    "session": "my_session",
+    "keys": ["/", "pattern", "Enter"]
+  }
+}
+
+// Save and quit
+{
+  "name": "nvim_keys",
+  "arguments": {
+    "session": "my_session",
+    "keys": ["Escape", ":", "w", "q", "Enter"]
   }
 }
 ```
@@ -235,21 +290,64 @@ Open a file at a specific line.
 }
 ```
 
-### nvim_insert
+### nvim_type
 
-Insert text at current cursor position.
+Type literal text without any special key interpretation. Perfect for inserting code, URLs, or any text with special characters.
 
 **Parameters:**
 - `session`: Target session name
-- `text`: Text to insert
+- `text`: Text to type literally
 
-**Example:**
+**Key Features:**
+- All characters are typed exactly as provided
+- No shell expansion ($HOME stays as $HOME)
+- Special characters work perfectly: !, @, #, $, %, ^, &, *, (), {}, [], |, \, `, ~
+- Quotes don't need escaping: "double" and 'single' work as-is
+- Newlines in the text create actual new lines
+- Tabs create actual indentation
+
+**Examples:**
+
+Insert code with special characters:
 ```javascript
 {
-  "name": "nvim_insert",
+  "name": "nvim_type",
   "arguments": {
     "session": "my_session",
-    "text": "Hello, this text will be inserted"
+    "text": "echo \"Hello $USER!\" && echo 'Path: $HOME' | grep -E '^Path:'"
+  }
+}
+```
+
+Multi-line text with indentation:
+```javascript
+{
+  "name": "nvim_type",
+  "arguments": {
+    "session": "my_session",
+    "text": "function example() {\n\tconst value = \"test\";\n\treturn value !== null;\n}"
+  }
+}
+```
+
+Complex shell command:
+```javascript
+{
+  "name": "nvim_type",
+  "arguments": {
+    "session": "my_session",
+    "text": "docker run -it --rm -v $(pwd):/app -e NODE_ENV=production node:latest"
+  }
+}
+```
+
+URL with special characters:
+```javascript
+{
+  "name": "nvim_type",
+  "arguments": {
+    "session": "my_session",
+    "text": "https://example.com/search?q=vim+tips&filter=recent#results"
   }
 }
 ```
