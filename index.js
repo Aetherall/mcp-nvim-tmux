@@ -153,22 +153,6 @@ class NvimRunServer {
 					},
 				},
 				{
-					name: "nvim_wait",
-					description: "Wait for a pattern to appear on screen",
-					inputSchema: {
-						type: "object",
-						properties: {
-							session: { type: "string", description: "Session name" },
-							pattern: { type: "string", description: "Pattern to wait for" },
-							timeout: {
-								type: "number",
-								description: "Timeout in seconds (default: 5)",
-							},
-						},
-						required: ["session", "pattern"],
-					},
-				},
-				{
 					name: "nvim_edit",
 					description: "Open a file at a specific line",
 					inputSchema: {
@@ -271,8 +255,6 @@ class NvimRunServer {
 						return await this.luaFile(args);
 					case "nvim_screen":
 						return await this.screen(args);
-					case "nvim_wait":
-						return await this.wait(args);
 					case "nvim_edit":
 						return await this.edit(args);
 					case "nvim_insert":
@@ -345,12 +327,15 @@ class NvimRunServer {
 	async keys({ session, keys }) {
 		const keysStr = keys.join(" ");
 		await this.runCommand(`${NVIMRUN_PATH} keys ${session} ${keysStr}`);
+		
+		// Get screen content after sending keys
+		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Sent keys to ${session}`,
+					text: screen,
 				},
 			],
 		};
@@ -358,12 +343,15 @@ class NvimRunServer {
 
 	async cmd({ session, command }) {
 		await this.runCommand(`${NVIMRUN_PATH} cmd ${session} "${command}"`);
+		
+		// Get screen content after executing command
+		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Executed command: ${command}`,
+					text: screen,
 				},
 			],
 		};
@@ -373,12 +361,15 @@ class NvimRunServer {
 		// Escape single quotes
 		const escaped = code.replace(/'/g, "'\\''");
 		await this.runCommand(`${NVIMRUN_PATH} lua ${session} '${escaped}'`);
+		
+		// Get screen content after executing Lua
+		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Executed Lua code`,
+					text: screen,
 				},
 			],
 		};
@@ -396,12 +387,15 @@ class NvimRunServer {
 
 			// Wait a bit before cleanup
 			setTimeout(() => unlink(tmpFile).catch(() => {}), 1000);
+			
+			// Get screen content after executing Lua file
+			const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 			return {
 				content: [
 					{
 						type: "text",
-						text: `Executed Lua code from file`,
+						text: screen,
 					},
 				],
 			};
@@ -427,30 +421,6 @@ class NvimRunServer {
 		};
 	}
 
-	async wait({ session, pattern, timeout = 5 }) {
-		try {
-			await this.runCommand(
-				`${NVIMRUN_PATH} wait ${session} "${pattern}" ${timeout}`,
-			);
-			return {
-				content: [
-					{
-						type: "text",
-						text: `Pattern found: ${pattern}`,
-					},
-				],
-			};
-		} catch (error) {
-			return {
-				content: [
-					{
-						type: "text",
-						text: `Pattern not found within ${timeout} seconds: ${pattern}`,
-					},
-				],
-			};
-		}
-	}
 
 	async edit({ session, file, line }) {
 		const lineCmd = line ? `${line}` : "";
@@ -459,12 +429,15 @@ class NvimRunServer {
 		if (line) {
 			await this.runCommand(`${NVIMRUN_PATH} cmd ${session} "${line}"`);
 		}
+		
+		// Get screen content after opening file
+		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Opened ${file}${line ? ` at line ${line}` : ""}`,
+					text: screen,
 				},
 			],
 		};
@@ -476,12 +449,15 @@ class NvimRunServer {
 		await this.runCommand(
 			`${NVIMRUN_PATH} keys ${session} i "${escaped}" Escape`,
 		);
+		
+		// Get screen content after inserting text
+		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Inserted text`,
+					text: screen,
 				},
 			],
 		};

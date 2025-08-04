@@ -131,30 +131,6 @@ nvimrun_screen() {
     tmux capture-pane -t "$session" -p $color_flag
 }
 
-# Wait for a pattern to appear on screen
-# Usage: nvimrun_wait [session_name] "pattern" [timeout]
-nvimrun_wait() {
-    local session="${1:-$DEFAULT_SESSION}"
-    local pattern="${2}"
-    local timeout="${3:-5}"
-    
-    if [ -z "$pattern" ]; then
-        echo "No pattern provided" >&2
-        return 1
-    fi
-    
-    local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-        if nvimrun_screen "$session" | grep -q "$pattern"; then
-            return 0
-        fi
-        sleep 0.1
-        elapsed=$((elapsed + 1))
-    done
-    
-    echo "Timeout waiting for pattern: $pattern" >&2
-    return 1
-}
 
 # Execute a vim command
 # Usage: nvimrun_cmd [session_name] "vim command"
@@ -232,7 +208,7 @@ nvimrun_play() {
 #   MCP_NVIM_TMUX_CMD - Command template (default: "ollama run $MODEL")
 #   MCP_NVIM_TMUX_MODEL - Default model for all operations
 #   MCP_NVIM_TMUX_ANALYZE_MODEL - Model for analysis step
-#   MCP_NVIM_TMUX_SUMMARIZE_MODEL - Model for summarization step
+#   MCP_NVIM_TMUX_SUMMARIZE_MODEL- Model for summarization step
 #
 # Examples:
 #   nvimrun analyze session1
@@ -299,6 +275,8 @@ Focus on Vim-specific details like:
 - File operations
 
 Be concise but thorough. Explain what the user was trying to do and what actually happened.
+Dont focus on the actual text content, but rather how the nvim interface responded to their actions.
+
 
 RECORDING DATA:"
     else
@@ -324,7 +302,7 @@ ${recording_output}"
         # Then summarize with summarize model
         MODEL="${MCP_NVIM_TMUX_SUMMARIZE_MODEL:-${MCP_NVIM_TMUX_MODEL:-qwen3:8b}}"
         local summarize_cmd=$(eval "echo \"$ai_cmd_template\"")
-        local summary_prompt="Summarize this Neovim session analysis in 3-5 sentences: $analysis"
+        local summary_prompt="Summarize this Neovim session analysis: $analysis"
         eval "$summarize_cmd" <<< "$summary_prompt" 2>/dev/null
     else
         # Just run the analysis
@@ -442,9 +420,6 @@ nvimrun() {
         screen)
             nvimrun_screen "$@"
             ;;
-        wait)
-            nvimrun_wait "$@"
-            ;;
         cmd)
             nvimrun_cmd "$@"
             ;;
@@ -461,7 +436,7 @@ nvimrun() {
             nvimrun_analyze "$@"
             ;;
         *)
-            echo "Usage: nvimrun {start|stop|keys|lua|screen|wait|cmd|recordings|play|cat|analyze} [args...]"
+            echo "Usage: nvimrun {start|stop|keys|lua|screen|cmd|recordings|play|cat|analyze} [args...]"
             echo ""
             echo "Commands:"
             echo "  start [session] [width] [height] [--record] - Start nvim in tmux session"
@@ -469,7 +444,6 @@ nvimrun() {
             echo "  keys [session] key1 key2...                 - Send keys to nvim"
             echo "  lua [session] 'code'                        - Execute lua code"
             echo "  screen [session] [--color]                  - Capture current screen (with ANSI colors)"
-            echo "  wait [session] 'pattern' [timeout]          - Wait for pattern on screen"
             echo "  cmd [session] 'command'                     - Execute vim command"
             echo "  recordings                                  - List available recordings"
             echo "  play <recording_or_pattern>                 - Play a recording"
