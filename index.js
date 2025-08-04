@@ -166,18 +166,6 @@ class NvimRunServer {
 					},
 				},
 				{
-					name: "nvim_insert",
-					description: "Insert text at current cursor position",
-					inputSchema: {
-						type: "object",
-						properties: {
-							session: { type: "string", description: "Session name" },
-							text: { type: "string", description: "Text to insert" },
-						},
-						required: ["session", "text"],
-					},
-				},
-				{
 					name: "nvim_type",
 					description: "Type literal text without any special key interpretation",
 					inputSchema: {
@@ -269,8 +257,6 @@ class NvimRunServer {
 						return await this.screen(args);
 					case "nvim_edit":
 						return await this.edit(args);
-					case "nvim_insert":
-						return await this.insert(args);
 					case "nvim_type":
 						return await this.type(args);
 					case "nvim_recordings":
@@ -445,26 +431,6 @@ class NvimRunServer {
 		}
 		
 		// Get screen content after opening file
-		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
-
-		return {
-			content: [
-				{
-					type: "text",
-					text: screen,
-				},
-			],
-		};
-	}
-
-	async insert({ session, text }) {
-		// Escape special characters
-		const escaped = text.replace(/"/g, '\\"');
-		await this.runCommand(
-			`${NVIMRUN_PATH} keys ${session} i "${escaped}" Escape`,
-		);
-		
-		// Get screen content after inserting text
 		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
 		return {

@@ -162,13 +162,12 @@ claude mcp add nvim -- nix run github:aetherall/mcp-nvim-tmux
 - `nvim_start` - Start a new Neovim session (with optional recording)
 - `nvim_stop` - Stop a Neovim session
 - `nvim_keys` - Send keystrokes
-- `nvim_insert` - Insert text at cursor
 - `nvim_cmd` - Execute Vim commands
 - `nvim_lua` - Execute simple Lua code
 - `nvim_lua_file` - Execute complex Lua code (multiline safe)
 - `nvim_screen` - Capture screen content
 - `nvim_edit` - Open file at specific line
-- `nvim_wait` - Wait for pattern on screen
+- `nvim_type` - Type literal text without special key interpretation
 - `nvim_recordings` - List available recordings
 - `nvim_play` - Play a recording
 - `nvim_cat` - Display recording in AI-readable format
