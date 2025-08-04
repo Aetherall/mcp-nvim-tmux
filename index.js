@@ -6,7 +6,7 @@ import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -479,13 +479,16 @@ class NvimRunServer {
 
 	async type({ session, text }) {
 		// Use stdin to pass text, avoiding all shell escaping issues
-		const { stdout, stderr } = await execAsync(
-			`${NVIMRUN_PATH} type ${session} -`,
-			{ input: text }
-		);
-		
-		if (stderr && !stderr.includes("warning")) {
-			throw new Error(stderr);
+		// Note: exec doesn't support input option, so we use execSync
+		try {
+			execSync(`${NVIMRUN_PATH} type ${session} -`, { 
+				input: text,
+				encoding: 'utf8'
+			});
+		} catch (error) {
+			if (error.stderr && !error.stderr.includes("warning")) {
+				throw new Error(error.stderr);
+			}
 		}
 		
 		// Get screen content after typing text
