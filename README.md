@@ -128,17 +128,22 @@ When you start a session, you can watch it in real-time from another terminal:
 
 ```bash
 # Start a session (this will show the attach command)
-./nvimrun.sh start my_session
+./nvimrun.sh start my_session 80 24
 
-# In another terminal, attach in read-only mode to watch
-tmux attach -t my_session -r
+# Output includes:
+# To watch in another terminal: tmux attach -t 'my_session' -r -x 80 -y 24
+
+# In another terminal, attach with preserved size
+tmux attach -t my_session -r -x 80 -y 24
 
 # To detach from watching: Press Ctrl+b, then d
 ```
 
+**Important**: The `-x` and `-y` flags preserve the original terminal size, preventing resize issues that could disrupt automation.
+
 Other useful tmux commands:
 - `tmux ls` - List all sessions
-- `tmux attach -t session_name` - Attach with control (careful - may interfere with automation)
+- `tmux attach -t session_name` - Attach with control (careful - may interfere)
 - `tmux kill-session -t session_name` - Force kill a stuck session
 
 ## Examples

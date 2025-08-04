@@ -51,6 +51,9 @@ nvimrun_start() {
         tmux new-session -d -s "$session" -x "$width" -y "$height" "nvim -u NONE"
     fi
     
+    # Prevent terminal resize when clients attach
+    tmux set-option -t "$session" window-size manual 2>/dev/null || true
+    
     # Wait a bit for nvim to start
     sleep 0.2
     
@@ -59,7 +62,7 @@ nvimrun_start() {
     else
         echo "Started nvim in session '$session' (${width}x${height})"
     fi
-    echo "To watch in another terminal: tmux attach -t '$session' -r"
+    echo "To watch in another terminal: tmux attach -t '$session' -r -x $width -y $height"
 }
 
 # Stop and kill a nvim session

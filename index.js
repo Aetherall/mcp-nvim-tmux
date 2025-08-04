@@ -304,7 +304,7 @@ class NvimRunServer {
 			content: [
 				{
 					type: "text",
-					text: `Started Neovim session: ${sessionName} (${width}x${height})${record ? " [RECORDING]" : ""}\n\nTo watch in another terminal:\n  tmux attach -t ${sessionName} -r\n\nNote: The -r flag means read-only mode, so you can watch without interfering.`,
+					text: `Started Neovim session: ${sessionName} (${width}x${height})${record ? " [RECORDING]" : ""}\n\nTo watch in another terminal:\n  tmux attach -t ${sessionName} -r -x ${width} -y ${height}\n\nNote: The -r flag means read-only mode. The -x/-y flags preserve the original size.`,
 				},
 			],
 		};
