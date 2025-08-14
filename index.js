@@ -10,7 +10,6 @@ import { exec, execSync } from "child_process";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { readFile, writeFile, unlink } from "fs/promises";
 import { randomBytes } from "crypto";
 
 const execAsync = promisify(exec);
@@ -54,11 +53,13 @@ class NvimRunServer {
 							},
 							width: {
 								type: "number",
-								description: "Terminal width (default: 80)",
+								description:
+									"Terminal width (default: 50, min: 40, max: 100) lower is better",
 							},
 							height: {
 								type: "number",
-								description: "Terminal height (default: 24)",
+								description:
+									"Terminal height (default: 20, min: 15, max: 50) lower is better",
 							},
 							record: {
 								type: "boolean",
@@ -80,7 +81,8 @@ class NvimRunServer {
 				},
 				{
 					name: "nvim_keys",
-					description: "Send keystrokes to Neovim. Use for special keys and navigation. Examples: ['i'] to enter insert mode, ['Escape'] to exit, ['Enter'] for newline, ['Tab'] for tab, ['C-w', 'l'] for window navigation, ['d', 'd'] to delete line",
+					description:
+						"Send keystrokes to Neovim. Use for special keys and navigation. Examples: ['i'] to enter insert mode, ['Escape'] to exit, ['Enter'] for newline, ['Tab'] for tab, ['C-w', 'l'] for window navigation, ['d', 'd'] to delete line",
 					inputSchema: {
 						type: "object",
 						properties: {
@@ -88,7 +90,8 @@ class NvimRunServer {
 							keys: {
 								type: "array",
 								items: { type: "string" },
-								description: "Array of keys to send. Special keys: Enter, Tab, Escape, Space, BSpace, Delete, Up, Down, Left, Right, Home, End, PageUp, PageDown, C-x (Ctrl+x), M-x (Alt+x), F1-F12",
+								description:
+									"Array of keys to send. Special keys: Enter, Tab, Escape, Space, BSpace, Delete, Up, Down, Left, Right, Home, End, PageUp, PageDown, C-x (Ctrl+x), M-x (Alt+x), F1-F12",
 							},
 						},
 						required: ["session", "keys"],
@@ -110,31 +113,15 @@ class NvimRunServer {
 					},
 				},
 				{
-					name: "nvim_lua",
-					description: "Execute Lua code in Neovim",
+					name: "nvim_source_lua",
+					description: "Source a Lua file in Neovim using :luafile command",
 					inputSchema: {
 						type: "object",
 						properties: {
 							session: { type: "string", description: "Session name" },
-							code: { type: "string", description: "Lua code to execute" },
+							file_path: { type: "string", description: "Path to the Lua file to source" },
 						},
-						required: ["session", "code"],
-					},
-				},
-				{
-					name: "nvim_lua_file",
-					description:
-						"Execute Lua code from multiline input (avoids escaping issues)",
-					inputSchema: {
-						type: "object",
-						properties: {
-							session: { type: "string", description: "Session name" },
-							code: {
-								type: "string",
-								description: "Lua code to execute (multiline safe)",
-							},
-						},
-						required: ["session", "code"],
+						required: ["session", "file_path"],
 					},
 				},
 				{
@@ -167,12 +154,17 @@ class NvimRunServer {
 				},
 				{
 					name: "nvim_type",
-					description: "Type literal text without any special key interpretation. Perfect for code, URLs, or text with special characters. All characters including $, !, quotes, etc. are typed exactly as provided. Example: 'echo $HOME' types literally without shell expansion",
+					description:
+						"Type literal text without any special key interpretation. Perfect for code, URLs, or text with special characters. All characters including $, !, quotes, etc. are typed exactly as provided. Example: 'echo $HOME' types literally without shell expansion",
 					inputSchema: {
 						type: "object",
 						properties: {
 							session: { type: "string", description: "Session name" },
-							text: { type: "string", description: "Text to type literally. Newlines create new lines, tabs create indentation. No escaping needed!" },
+							text: {
+								type: "string",
+								description:
+									"Text to type literally. Newlines create new lines, tabs create indentation. No escaping needed!",
+							},
 						},
 						required: ["session", "text"],
 					},
@@ -191,9 +183,9 @@ class NvimRunServer {
 					inputSchema: {
 						type: "object",
 						properties: {
-							pattern: { 
-								type: "string", 
-								description: "Recording file name or pattern to match" 
+							pattern: {
+								type: "string",
+								description: "Recording file name or pattern to match",
 							},
 						},
 						required: ["pattern"],
@@ -201,13 +193,14 @@ class NvimRunServer {
 				},
 				{
 					name: "nvim_cat",
-					description: "Display asciinema recording in AI-readable format with input/output timeline",
+					description:
+						"Display asciinema recording in AI-readable format with input/output timeline",
 					inputSchema: {
 						type: "object",
 						properties: {
-							pattern: { 
-								type: "string", 
-								description: "Recording file name or pattern to match" 
+							pattern: {
+								type: "string",
+								description: "Recording file name or pattern to match",
 							},
 						},
 						required: ["pattern"],
@@ -215,18 +208,20 @@ class NvimRunServer {
 				},
 				{
 					name: "nvim_analyze",
-					description: "Analyze a Neovim recording using AI to explain what happened",
+					description:
+						"Analyze a Neovim recording using AI to explain what happened",
 					inputSchema: {
 						type: "object",
 						properties: {
-							pattern: { 
-								type: "string", 
-								description: "Recording file name or pattern to match" 
+							pattern: {
+								type: "string",
+								description: "Recording file name or pattern to match",
 							},
 							summarize: {
 								type: "boolean",
-								description: "If true, provide a brief summary instead of detailed analysis",
-								default: false
+								description:
+									"If true, provide a brief summary instead of detailed analysis",
+								default: false,
 							},
 						},
 						required: ["pattern"],
@@ -249,10 +244,8 @@ class NvimRunServer {
 						return await this.keys(args);
 					case "nvim_cmd":
 						return await this.cmd(args);
-					case "nvim_lua":
-						return await this.lua(args);
-					case "nvim_lua_file":
-						return await this.luaFile(args);
+					case "nvim_source_lua":
+						return await this.sourceLua(args);
 					case "nvim_screen":
 						return await this.screen(args);
 					case "nvim_edit":
@@ -291,20 +284,25 @@ class NvimRunServer {
 		return stdout;
 	}
 
-	async start({ session, width = 80, height = 24, record = false }) {
+	async start({ session, width = 50, height = 20, record = false }) {
 		const sessionName = session || `nvim_mcp_${randomBytes(4).toString("hex")}`;
 
 		const recordFlag = record ? "--record" : "";
 		await this.runCommand(
 			`${NVIMRUN_PATH} start ${sessionName} ${width} ${height} ${recordFlag}`,
 		);
-		sessions.set(sessionName, { width, height, startTime: new Date(), recording: record });
+		sessions.set(sessionName, {
+			width,
+			height,
+			startTime: new Date(),
+			recording: record,
+		});
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Started Neovim session: ${sessionName} (${width}x${height})${record ? " [RECORDING]" : ""}\n\nTo watch in another terminal:\n  tmux attach -t ${sessionName} -r -x ${width} -y ${height}\n\nNote: The -r flag means read-only mode. The -x/-y flags preserve the original size.`,
+					text: `Started Neovim session: ${sessionName} (${width}x${height})${record ? " [RECORDING]" : ""}\nTo watch in another terminal: tmux attach -t ${sessionName} -r -x ${width} -y ${height}\nNote: The -r flag means read-only mode. The -x/-y flags preserve the original size.`,
 				},
 			],
 		};
@@ -327,86 +325,31 @@ class NvimRunServer {
 	async keys({ session, keys }) {
 		const keysStr = keys.join(" ");
 		await this.runCommand(`${NVIMRUN_PATH} keys ${session} ${keysStr}`);
-		
-		// Get screen content after sending keys
-		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: screen,
-				},
-			],
-		};
+		// Get screen content after sending keys
+		return await this.screen({ session, color: true });
 	}
 
 	async cmd({ session, command }) {
 		await this.runCommand(`${NVIMRUN_PATH} cmd ${session} "${command}"`);
-		
+
 		// Get screen content after executing command
-		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
-
-		return {
-			content: [
-				{
-					type: "text",
-					text: screen,
-				},
-			],
-		};
+		return await this.screen({ session, color: true });
 	}
 
-	async lua({ session, code }) {
-		// Escape single quotes
-		const escaped = code.replace(/'/g, "'\\''");
-		await this.runCommand(`${NVIMRUN_PATH} lua ${session} '${escaped}'`);
-		
-		// Get screen content after executing Lua
-		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
+	async sourceLua({ session, file_path }) {
+		// Source a Lua file using :luafile command
+		await this.runCommand(
+			`${NVIMRUN_PATH} source_lua ${session} "${file_path}"`,
+		);
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: screen,
-				},
-			],
-		};
-	}
-
-	async luaFile({ session, code }) {
-		// Use temporary file for complex Lua code
-		const tmpFile = `/tmp/nvim_mcp_${randomBytes(8).toString("hex")}.lua`;
-
-		try {
-			await writeFile(tmpFile, code);
-			await this.runCommand(
-				`${NVIMRUN_PATH} keys ${session} ":luafile ${tmpFile}" Enter`,
-			);
-
-			// Wait a bit before cleanup
-			setTimeout(() => unlink(tmpFile).catch(() => {}), 1000);
-			
-			// Get screen content after executing Lua file
-			const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
-
-			return {
-				content: [
-					{
-						type: "text",
-						text: screen,
-					},
-				],
-			};
-		} catch (error) {
-			await unlink(tmpFile).catch(() => {});
-			throw error;
-		}
+		// Get screen content after sourcing Lua file
+		return await this.screen({ session, color: true });
 	}
 
 	async screen({ session, color = false }) {
 		const colorFlag = color ? "--color" : "";
+		await new Promise((resolve) => setTimeout(resolve, 300)); // Wait for Neovim to update
 		const output = await this.runCommand(
 			`${NVIMRUN_PATH} screen ${session} ${colorFlag}`,
 		);
@@ -421,7 +364,6 @@ class NvimRunServer {
 		};
 	}
 
-
 	async edit({ session, file, line }) {
 		const lineCmd = line ? `${line}` : "";
 		await this.runCommand(`${NVIMRUN_PATH} cmd ${session} "e ${file}"`);
@@ -429,45 +371,27 @@ class NvimRunServer {
 		if (line) {
 			await this.runCommand(`${NVIMRUN_PATH} cmd ${session} "${line}"`);
 		}
-		
-		// Get screen content after opening file
-		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: screen,
-				},
-			],
-		};
+		// Get screen content after opening file
+		return await this.screen({ session, color: true });
 	}
 
 	async type({ session, text }) {
 		// Use stdin to pass text, avoiding all shell escaping issues
 		// Note: exec doesn't support input option, so we use execSync
 		try {
-			execSync(`${NVIMRUN_PATH} type ${session} -`, { 
+			execSync(`${NVIMRUN_PATH} type ${session} -`, {
 				input: text,
-				encoding: 'utf8'
+				encoding: "utf8",
 			});
 		} catch (error) {
 			if (error.stderr && !error.stderr.includes("warning")) {
 				throw new Error(error.stderr);
 			}
 		}
-		
-		// Get screen content after typing text
-		const screen = await this.runCommand(`${NVIMRUN_PATH} screen ${session}`);
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: screen,
-				},
-			],
-		};
+		// Get screen content after typing text
+		return await this.screen({ session, color: true });
 	}
 
 	async recordings() {
@@ -511,7 +435,9 @@ class NvimRunServer {
 
 	async analyze({ pattern, summarize = false }) {
 		const summarizeFlag = summarize ? "summarize" : "";
-		const output = await this.runCommand(`${NVIMRUN_PATH} analyze "${pattern}" ${summarizeFlag}`);
+		const output = await this.runCommand(
+			`${NVIMRUN_PATH} analyze "${pattern}" ${summarizeFlag}`,
+		);
 
 		return {
 			content: [

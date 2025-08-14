@@ -31,7 +31,9 @@
 
           mkdir -p $out/lib/mcpnvimtmux
           cp -r node_modules package.json package-lock.json index.js $out/lib/mcpnvimtmux/
-          
+
+          cp agent_helpers.lua $out/lib/mcpnvimtmux/
+
           # Copy nvimrun.sh and patch its shebang
           cp nvimrun.sh $out/lib/mcpnvimtmux/
           patchShebangs $out/lib/mcpnvimtmux/nvimrun.sh

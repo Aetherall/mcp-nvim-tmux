@@ -10,9 +10,13 @@ DEFAULT_SESSION="nvim_test"
 # Usage: nvimrun_start [session_name] [width] [height] [--record]
 nvimrun_start() {
     local session="$DEFAULT_SESSION"
-    local width="80"
-    local height="24"
+    local width="60"
+    local height="25"
     local record=false
+
+    if nvimrun_exists "$session"; then
+        nvimrun_stop "$session"
+    fi
     
     # Parse arguments
     local args=()
@@ -40,19 +44,46 @@ nvimrun_start() {
     if $record; then
         mkdir -p "$recordings_dir"
     fi
+
+    # Get the directory where this script is located
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    echo "Starting nvim with script_dir: ${BASH_SOURCE}"
+    
+    # Always load agent helpers from the tool directory
+    local agent_helpers="$script_dir/agent_helpers.lua"
+    local base_params=""
+    if [ -f "$agent_helpers" ]; then
+        base_params="-S $agent_helpers"
+    fi
+    
+    # Check if user has their own run.lua in the current directory
+    local user_lua=""
+    if [ -f "$(pwd)/run.lua" ]; then
+        user_lua="-S ./run.lua"
+        echo "Also loading user's run.lua script."
+    fi
+    
+    # Add settings to improve message display: larger cmdheight and shorter updatetime
+    local init_cmds="-c 'set cmdheight=5' -c 'set updatetime=100'"
+    
+    # Combine all parameters (agent helpers first, then user's run.lua if exists)
+    local all_params="$init_cmds $base_params $user_lua"
     
     # Create new detached tmux session with nvim (optionally wrapped in asciinema)
     if $record; then
         local cast_file="$recordings_dir/${session}_$(date +%Y%m%d_%H%M%S).cast"
         tmux new-session -d -s "$session" -x "$width" -y "$height" \
-            "asciinema rec --stdin -q '$cast_file' -c 'nvim -u NONE'"
+            "asciinema rec --stdin -q '$cast_file' -c 'nvim -u NONE $all_params'"
         echo "Recording to: $cast_file"
     else
-        tmux new-session -d -s "$session" -x "$width" -y "$height" "nvim -u NONE"
+        tmux new-session -d -s "$session" -x "$width" -y "$height" "nvim -u NONE $all_params"
     fi
     
     # Prevent terminal resize when clients attach
-    tmux set-option -t "$session" window-size manual 2>/dev/null || true
+    tmux set-option -t "$session" window-size manual
+    # resize the window to the specified dimensions
+    tmux resize-window -t "$session" -x "$width" -y "$height"
     
     # Wait a bit for nvim to start
     sleep 0.2
@@ -62,7 +93,34 @@ nvimrun_start() {
     else
         echo "Started nvim in session '$session' (${width}x${height})"
     fi
-    echo "To watch in another terminal: tmux attach -t '$session' -r -x $width -y $height"
+
+    # Start a new kitty terminal if available
+    if command -v kitty >/dev/null 2>&1; then
+        # Check if hyprland is running
+        if command -v hyprctl >/dev/null 2>&1; then
+            local w=$((width * 96 / 10))
+            local h=$((height * 21))
+            hyprctl dispatch exec "[float;noinitialfocus;size $w $h;monitor 2]" "kitty --title='$session' tmux attach -t $session"
+        else
+            # # Use kitty to open the session
+            echo kitty @ launch --type=window --title="$session" \
+                --cwd="$HOME" "tmux attach -t $session"
+        fi
+        echo "Opened session '$session' in a new kitty window."
+    else
+        echo "To open the session in a new terminal, run: tmux attach -t $session -r"
+    fi
+
+}
+
+nvimrun_exists() {
+    local session="${1:-$DEFAULT_SESSION}"
+    
+    if tmux has-session -t "$session" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Stop and kill a nvim session
@@ -93,14 +151,14 @@ nvimrun_keys() {
     tmux send-keys -t "$session" "$@"
 }
 
-# Execute lua code in nvim
-# Usage: nvimrun_lua [session_name] "lua code"
-nvimrun_lua() {
+# Source a Lua file in nvim
+# Usage: nvimrun_source_lua [session_name] "file_path"
+nvimrun_source_lua() {
     local session="${1:-$DEFAULT_SESSION}"
-    local lua_code="${2}"
+    local file_path="${2}"
     
-    if [ -z "$lua_code" ]; then
-        echo "No lua code provided" >&2
+    if [ -z "$file_path" ]; then
+        echo "No file path provided" >&2
         return 1
     fi
     
@@ -109,8 +167,8 @@ nvimrun_lua() {
         return 1
     fi
     
-    # Send the lua command
-    tmux send-keys -t "$session" ":lua ${lua_code}" Enter
+    # Use :luafile command to source the Lua file
+    tmux send-keys -t "$session" ":luafile ${file_path}" Enter
 }
 
 # Capture and display the current screen
@@ -444,11 +502,14 @@ nvimrun() {
         stop)
             nvimrun_stop "$@"
             ;;
+        exists)
+            nvimrun_exists "$@"
+            ;;
         keys)
             nvimrun_keys "$@"
             ;;
-        lua)
-            nvimrun_lua "$@"
+        source_lua)
+            nvimrun_source_lua "$@"
             ;;
         screen)
             nvimrun_screen "$@"
@@ -472,13 +533,13 @@ nvimrun() {
             nvimrun_analyze "$@"
             ;;
         *)
-            echo "Usage: nvimrun {start|stop|keys|lua|type|screen|cmd|recordings|play|cat|analyze} [args...]"
+            echo "Usage: nvimrun {start|stop|keys|source_lua|type|screen|cmd|recordings|play|cat|analyze} [args...]"
             echo ""
             echo "Commands:"
             echo "  start [session] [width] [height] [--record] - Start nvim in tmux session"
             echo "  stop [session]                              - Stop nvim session"
             echo "  keys [session] key1 key2...                 - Send keys to nvim"
-            echo "  lua [session] 'code'                        - Execute lua code"
+            echo "  source_lua [session] 'file_path'            - Source a Lua file"
             echo "  type [session] 'text'                       - Type literal text (no key interpretation)"
             echo "  screen [session] [--color]                  - Capture current screen (with ANSI colors)"
             echo "  cmd [session] 'command'                     - Execute vim command"
